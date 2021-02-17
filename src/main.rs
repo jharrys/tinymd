@@ -2,6 +2,7 @@ use std::path::Path;
 use std::fs::File;
 use std::error::Error;
 use std::io::{BufRead, BufReader};
+use std::io::Write;
 
 fn get_title() -> String {
     let mut the_title = String::from(env!("CARGO_PKG_NAME"));
@@ -40,8 +41,52 @@ fn parse_markdown_file(_filename: &str) {
         let mut output_line = String::new();
 
         match first_char.pop() {
-            Some('#') => {},
-            _ => {}
+            Some('#') => {
+                if _ptag {
+                    _ptag = false;
+                    output_line.push_str("</p>\n");
+                }
+
+                if _htag  {
+                    _htag = false;
+                    output_line.push_str("</h1>\n");
+                }
+
+                _htag = true;
+                output_line.push_str("<h1>");
+                output_line.push_str(&line_contents[2..]);
+            },
+            _ => {
+                if !_ptag {
+                    _ptag = true;
+                    output_line.push_str("<p>");
+                }
+                output_line.push_str(&line_contents)
+            }
+        }
+        if _ptag  {
+            _ptag = false;
+            output_line.push_str("</p>\n");
+        }
+        if _htag {
+            _htag = false;
+            output_line.push_str("</h1>\n");
+        }
+        if output_line != "<p></p>\n" {
+            tokens.push(output_line);
+        }
+
+        // Create an output file based on the input file, minus ".md"
+        let _output_filename = &_filename[.._filename.len() - 3];
+        let mut output_filename = String::from(_output_filename);
+        output_filename.push_str(".html");
+
+        let mut outfile = File::create(output_filename.to_string())
+            .expect("[ ERROR ] Could not create output file!");
+
+        for line in &tokens {
+            outfile.write_all(line.as_bytes())
+                .expect("[ ERROR ] Could not write to output file!");
         }
     }
 }
